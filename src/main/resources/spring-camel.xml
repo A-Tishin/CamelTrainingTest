@@ -1,0 +1,70 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:camel="http://camel.apache.org/schema/spring"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+    <camelContext id="camel" xmlns="http://camel.apache.org/schema/spring" loadTypeConverters="true">
+
+        <!-- Process CSV to DB -->
+
+        <route id="processCsvToData-route">
+            <from uri="file:in/"/>
+            <unmarshal>
+                <csv/>
+            </unmarshal>
+            <process ref="csvToDataProcessor"/>
+            <to uri="direct:sendDataToDb"/>
+        </route>
+
+        <route id="sendToDb-route">
+            <from uri="direct:sendDataToDb"/>
+                <bean ref="database" method="sendDataToDb"/>
+                <to uri="direct:getAllData"/>
+        </route>
+
+        <!-- Make report and send to DB -->
+
+        <route id="getDataList-route">
+            <from uri="direct:getAllData"/>
+            <bean ref="database" method="getDataList"/>
+            <to uri="direct:toMapper"/>
+        </route>
+
+        <route id="reportMapper-route">
+            <from uri="direct:toMapper"/>
+            <process ref="dataToRegionReportProcessor"/>
+            <to uri="direct:sendReportsToDb"/>
+        </route>
+
+        <route id="sendReportToDb-route">
+            <from uri="direct:sendReportsToDb"/>
+            <bean ref="database" method="sendReportToDb"/>
+            <to uri="direct:getAllReportsFromDb"/>
+        </route>
+
+        <!-- Get report from DB and produce Csv -->
+
+        <route id="getReport-route">
+            <from uri="direct:getAllReportsFromDb"/>
+            <bean ref="database" method="getReportList"/>
+            <to uri="direct:printer"/>
+        </route>
+
+        <route id="makeCsv-route">
+            <from uri="direct:printer"/>
+            <process ref="reportPrinterProcessor"/>
+            <stop/>
+        </route>
+
+        <!-- Test route -->
+
+        <route id="test">
+            <from uri="direct:start"/>
+            <process ref="testProcessor"/>
+            <to uri="direct:end"/>
+        </route>
+
+    </camelContext>
+</beans>
